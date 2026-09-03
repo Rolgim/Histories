@@ -1,0 +1,22 @@
+name: Validation des données
+
+on:
+  pull_request:
+    paths:
+      - "data/**"
+      - "schemas/**"
+      - "scripts/**"
+      - ".github/workflows/validate-data.yml"
+  push:
+    branches: [ main ]
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+      - run: python -m pip install jsonschema
+      - run: python scripts/validate_data.py
