@@ -1,0 +1,41 @@
+name: Déployer le site sur GitHub Pages
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+# Autorise les permissions pour GitHub Pages
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Permet un seul déploiement en cours à la fois
+concurrency:
+  group: "pages"
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Récupérer le code
+        uses: actions/checkout@v4
+
+      - name: Configurer GitHub Pages
+        uses: actions/configure-pages@v4
+
+      - name: Téléverser les artefacts
+        uses: actions/upload-pages-artifact@v3
+        with:
+          # Indiquez le dossier racine si tout est à la racine, 
+          # ou un sous-dossier spécifique si votre site est isolé.
+          path: '.'
+
+      - name: Déploiement
+        id: deployment
+        uses: actions/deploy-pages@v4
