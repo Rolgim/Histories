@@ -1,13 +1,20 @@
-// Chargement des données éditoriales.
-// Les événements sont volontairement séparés : une contribution = un fichier JSON.
 export async function loadData() {
   const [regionsResponse, manifestResponse] = await Promise.all([
     fetch("data/regions.json"),
     fetch("data/events/manifest.json")
   ]);
 
-  if (!regionsResponse.ok) throw new Error(`Impossible de charger data/regions.json (${regionsResponse.status})`);
-  if (!manifestResponse.ok) throw new Error(`Impossible de charger le manifeste des événements (${manifestResponse.status})`);
+  if (!regionsResponse.ok) {
+    throw new Error(
+      `Impossible de charger data/regions.json (${regionsResponse.status})`
+    );
+  }
+
+  if (!manifestResponse.ok) {
+    throw new Error(
+      `Impossible de charger le manifeste des événements (${manifestResponse.status})`
+    );
+  }
 
   const regions = await regionsResponse.json();
   const manifest = await manifestResponse.json();
@@ -15,26 +22,224 @@ export async function loadData() {
   const eventResponses = await Promise.all(
     manifest.files.map(async (file) => {
       const response = await fetch(`data/events/${file}`);
-      if (!response.ok) throw new Error(`Impossible de charger data/events/${file} (${response.status})`);
+
+      if (!response.ok) {
+        throw new Error(
+          `Impossible de charger data/events/${file} (${response.status})`
+        );
+      }
+
       return response.json();
     })
   );
 
-  return { regions, events: eventResponses };
+  return {
+    regions,
+    events: eventResponses
+  };
 }
 
-export function activeSnapshot(region, year) {
-  // Trouver le snapshot le plus récent avant ou égal à l'année donnée
-  const snapshots = region.snapshots.sort((a, b) => a.year - b.year);
-  let active = snapshots[0]; 
 
-  for (const snap of snapshots) {
-    if (snap.year <= year) {
-      active = snap;
+// ============================================================
+// SNAPSHOT ÉDITORIAL
+// ============================================================
+//
+// Les régions utilisent :
+//
+// {
+//   from: 700,
+//   to: 1185,
+//   ...
+// }
+//
+// et non "year".
+//
+// On cherche donc d'abord le snapshot qui contient
+// directement l'année.
+//
+// Exemple :
+//
+// 700 <= 1000 < 1185
+//
+// => snapshot actif
+//
+
+export function activeSnapshot(region, year) {
+  if (!region?.snapshots || !Array.isArray(region.snapshots)) {
+    return null;
+  }
+
+  const snapshots = [...region.snapshots].sort(
+    (a, b) => (a.from ?? -Infinity) - (b.from ?? -Infinity)
+  );
+
+  // Snapshot contenant explicitement l'année.
+  const containing = snapshots.find((snapshot) => {
+    const from = snapshot.from ?? -Infinity;
+    const to = snapshot.to ?? Infinity;
+
+    return year >= from && year < to;
+  });
+
+  if (containing) {
+    return containing;
+  }
+
+  // Si aucune période ne correspond :
+  // dernier snapshot commencé avant l'année.
+  let active = null;
+
+  for (const snapshot of snapshots) {
+    if ((snapshot.from ?? -Infinity) <= year) {
+      active = snapshot;
     } else {
       break;
     }
   }
 
-  return active;
+  // Si l'année est avant le premier snapshot,
+  // on utilise le premier.
+  return active || snapshots[0];
+}
+
+
+// ============================================================
+// HISTORICAL BASEMAPS
+// ============================================================
+
+const HISTORICAL_BASE_URL =
+  "https://raw.githubusercontent.com/aourednik/historical-basemaps/master";
+
+let historicalIndex = null;
+
+const historicalGeoJSONCache = new Map();
+
+
+// ------------------------------------------------------------
+// Charge index.json
+// ------------------------------------------------------------
+
+export async function loadHistoricalIndex() {
+  if (historicalIndex) {
+    return historicalIndex;
+  }
+
+  const response = await fetch(
+    `${HISTORICAL_BASE_URL}/index.json`
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      `Impossible de charger l'index historique (${response.status})`
+    );
+  }
+
+  const data = await response.json();
+
+  if (!Array.isArray(data.years)) {
+    throw new Error(
+      "index.json historique invalide : propriété 'years' absente"
+    );
+  }
+
+  historicalIndex = data.years
+    .filter(
+      (entry) =>
+        Number.isFinite(entry.year) &&
+        typeof entry.filename === "string"
+    )
+    .sort((a, b) => a.year - b.year);
+
+  return historicalIndex;
+}
+
+
+// ------------------------------------------------------------
+// Trouve le snapshot historique précédent
+// ------------------------------------------------------------
+//
+// Exemple :
+//
+// 1000 -> world_1000.geojson
+// 1001 -> world_1000.geojson
+// 1050 -> world_1000.geojson
+// 1100 -> world_1100.geojson
+//
+// On utilise volontairement le snapshot précédent.
+// ------------------------------------------------------------
+
+export function findHistoricalSnapshot(year, index) {
+  if (!index?.length) {
+    return null;
+  }
+
+  let previous = null;
+
+  for (const snapshot of index) {
+    if (snapshot.year === year) {
+      return snapshot;
+    }
+
+    if (snapshot.year > year) {
+      break;
+    }
+
+    previous = snapshot;
+  }
+
+  // Année avant le premier snapshot.
+  if (!previous) {
+    return index[0];
+  }
+
+  return previous;
+}
+
+
+// ------------------------------------------------------------
+// Charge un GeoJSON historique
+// ------------------------------------------------------------
+
+export async function loadHistoricalGeoJSON(year) {
+  const index = await loadHistoricalIndex();
+
+  const snapshot = findHistoricalSnapshot(year, index);
+
+  if (!snapshot) {
+    throw new Error(
+      `Aucun snapshot historique disponible pour ${year}`
+    );
+  }
+
+  const cacheKey = snapshot.filename;
+
+  // Cache mémoire.
+  if (historicalGeoJSONCache.has(cacheKey)) {
+    return {
+      ...snapshot,
+      geojson: historicalGeoJSONCache.get(cacheKey)
+    };
+  }
+
+  const response = await fetch(
+    `${HISTORICAL_BASE_URL}/geojson/${snapshot.filename}`
+  );
+
+  if (!response.ok) {
+    throw new Error(
+      `Impossible de charger ${snapshot.filename} (${response.status})`
+    );
+  }
+
+  const geojson = await response.json();
+
+  historicalGeoJSONCache.set(
+    cacheKey,
+    geojson
+  );
+
+  return {
+    ...snapshot,
+    geojson
+  };
 }
