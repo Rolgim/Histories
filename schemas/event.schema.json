@@ -1,0 +1,86 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Historical event",
+  "type": "object",
+  "required": [
+    "id",
+    "year",
+    "title",
+    "lon",
+    "lat",
+    "regionId",
+    "religion",
+    "territory",
+    "language",
+    "ethnicity",
+    "desc"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9-]+$"
+    },
+    "year": {
+      "type": "integer",
+      "minimum": 700,
+      "maximum": 1400
+    },
+    "title": {
+      "type": "string",
+      "minLength": 3
+    },
+    "lon": {
+      "type": "number",
+      "minimum": -180,
+      "maximum": 180
+    },
+    "lat": {
+      "type": "number",
+      "minimum": -90,
+      "maximum": 90
+    },
+    "regionId": {
+      "type": "string"
+    },
+    "religion": {
+      "type": "string"
+    },
+    "territory": {
+      "type": "string"
+    },
+    "language": {
+      "type": "string"
+    },
+    "ethnicity": {
+      "type": "string"
+    },
+    "desc": {
+      "type": "string",
+      "minLength": 10
+    },
+    "sources": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "title",
+          "url"
+        ],
+        "properties": {
+          "author": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string",
+            "format": "uri"
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}
