@@ -37,7 +37,7 @@ map.scrollWheelZoom.disable();
 // ============================================================
 
 L.tileLayer(
-  "https://tiles.stadiamaps.com/tiles/stamen_watercolor/{z}/{x}/{y}{r}.png",
+  "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
   {
     attribution: "Fond de carte © OpenStreetMap",
     opacity: 0.4,
