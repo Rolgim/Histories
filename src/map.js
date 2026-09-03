@@ -7,6 +7,78 @@ export function createMapRenderer({REGIONS,EVENTS,Theme}){
   const regionEls={}; const dotEls={};
   let currentYear=1000, selectedEventId=null;
   let onRegionClick=null,onEventClick=null;
+  // zoom
+  let zoomLevel = 1; // Niveau de zoom (1 = 100%)
+  let isDragging = false;
+  let startPoint = { x: 0, y: 0 };
+  let offset = { x: 0, y: 0 };
+  let isDraggable = true; // Variable pour activer/désactiver le drag
+
+  // Appliquer le zoom et le décalage à la carte
+  function applyTransform() {
+    svg.style.transform = `translate(${offset.x}px, ${offset.y}px) scale(${zoomLevel})`;
+  }
+
+  // Zoom molette 
+  svg.addEventListener("wheel", (evt) => {
+    evt.preventDefault();
+    const delta = evt.deltaY > 1.1 ? -0.1 : 1; // Delta pour le zoom
+    const newZoom = zoomLevel + delta;
+
+    // Limiter le zoom (entre 1 et 5)
+    if (newZoom >= 1 && newZoom <= 5) {
+      zoomLevel = newZoom;
+
+      // Ajuster le décalage pour zoomer vers le curseur
+      const rect = svg.getBoundingClientRect();
+      const mouseX = evt.clientX - rect.left;
+      const mouseY = evt.clientY - rect.top;
+
+      // Calculer le nouveau décalage pour centrer le zoom sur le curseur
+      offset.x = mouseX - (mouseX - offset.x) * (zoomLevel / (zoomLevel + delta));
+      offset.y = mouseY - (mouseY - offset.y) * (zoomLevel / (zoomLevel + delta));
+
+      applyTransform();
+    }
+  });
+
+  // Déplacement de la carte (drag)
+  svg.addEventListener("mousedown", (evt) => {
+    if (evt.button === 0) { // Clic gauche
+      isDragging = true;
+      startPoint = { x: evt.clientX - offset.x, y: evt.clientY - offset.y };
+      svg.style.cursor = "grabbing";
+    }
+  });
+
+  window.addEventListener("mousemove", (evt) => {
+    if (isDragging) {
+      offset.x = evt.clientX - startPoint.x;
+      offset.y = evt.clientY - startPoint.y;
+      applyTransform();
+    }
+  });
+
+  window.addEventListener("mouseup", () => {
+    isDragging = false;
+    svg.style.cursor = "grab";
+  });
+
+  document.getElementById("zoom-in").addEventListener("click", () => {
+    zoomLevel = Math.min(zoomLevel + 0.5, 5); // Limite max à 5x
+    applyTransform();
+  });
+
+  document.getElementById("zoom-out").addEventListener("click", () => {
+    zoomLevel = Math.max(zoomLevel - 0.5, 1); // Limite min à 1x 
+    applyTransform();
+  });
+
+  document.getElementById("zoom-reset").addEventListener("click", () => {
+    zoomLevel = 1;
+    offset = { x: 0, y: 0 };
+    applyTransform();
+  });
 
   function init(regionClickHandler,eventClickHandler){
     onRegionClick=regionClickHandler; onEventClick=eventClickHandler;
@@ -51,3 +123,4 @@ export function createMapRenderer({REGIONS,EVENTS,Theme}){
   }
   return {init,setYear,setSelectedEvent,refresh,get year(){return currentYear;}};
 }
+
