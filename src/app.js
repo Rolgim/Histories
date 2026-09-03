@@ -6,7 +6,7 @@ import {createTimeline} from "./timeline.js";
 import {createThemeSwitcher} from "./theme-switcher.js";
 
 async function main(){
-  const {REGIONS,EVENTS}=await loadData();
+  const { regions: REGIONS, events: EVENTS } = await loadData();
   const Theme=createTheme(REGIONS,EVENTS);
   let Panel,ThemeSwitcher;
   const MapRenderer=createMapRenderer({REGIONS,EVENTS,Theme});

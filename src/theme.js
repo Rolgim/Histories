@@ -1,4 +1,7 @@
 export function createTheme(REGIONS, EVENTS){
+  if (!REGIONS || !EVENTS) {
+    throw new Error("REGIONS et EVENTS doivent être définis pour créer le thème.");
+  }
   const MODES=[
     {key:"territory",label:"Entités politiques"},
     {key:"religion",label:"Religions"},
@@ -9,7 +12,11 @@ export function createTheme(REGIONS, EVENTS){
   const cache={};
   function allValues(key){
     const s=new Set();
-    REGIONS.forEach(r=>r.snapshots.forEach(sn=>s.add(sn[key])));
+    REGIONS.forEach(r => {
+      if (r.snapshots && Array.isArray(r.snapshots)) {  // Vérification défensive
+        r.snapshots.forEach(sn => s.add(sn[key]));
+      }
+    });
     EVENTS.forEach(e=>s.add(e[key]));
     return [...s].sort();
   }

@@ -1,4 +1,5 @@
 // Chargement des données éditoriales.
+// Les événements sont volontairement séparés : une contribution = un fichier JSON.
 export async function loadData() {
   const [regionsResponse, manifestResponse] = await Promise.all([
     fetch("data/regions.json"),
@@ -20,4 +21,20 @@ export async function loadData() {
   );
 
   return { regions, events: eventResponses };
+}
+
+export function activeSnapshot(region, year) {
+  // Trouver le snapshot le plus récent avant ou égal à l'année donnée
+  const snapshots = region.snapshots.sort((a, b) => a.year - b.year);
+  let active = snapshots[0]; 
+
+  for (const snap of snapshots) {
+    if (snap.year <= year) {
+      active = snap;
+    } else {
+      break;
+    }
+  }
+
+  return active;
 }
