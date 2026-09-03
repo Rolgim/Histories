@@ -19,9 +19,9 @@ const map = L.map('map', {
 map.scrollWheelZoom.disable();
 
 // Fond de carte historique/discret
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+L.tileLayer('https://tiles.stadiamaps.com/tiles/stamen_watercolor/{z}/{x}/{y}{r}.png', {
   attribution: 'Fond de carte © OpenStreetMap',
-  opacity: 0.3, 
+  opacity: 0.4, 
   noWrap: true,
   bounds: worldBounds      // Limite le chargement des tuiles à la zone du monde
 }).addTo(map);
@@ -48,7 +48,7 @@ async function main() {
             const isSelected = layer.options.eventIndex === eventIdx;
             layer.setStyle({
               radius: eventIdx === null ? 5 : (isSelected ? 8 : 5),
-              fillOpacity: eventIdx === null ? 0.8 : (isSelected ? 1 : 0.8),
+              fillOpacity: eventIdx === null ? 0.3 : (isSelected ? 1 : 0.8),
               color: isSelected ? "#7a2e1f" : "#3a2c1a",
               weight: isSelected ? 3 : 1,
             });
@@ -162,7 +162,7 @@ function initGeoJSONLayers(regions, events, Theme, Panel, activeSnapshot) {
         fillColor: Theme.colorFor(Theme.current, snap[Theme.current]),
         color: Theme.current === "territory" ? "var(--ink)" : "none",
         weight: Theme.current === "territory" ? 1 : 0,
-        fillOpacity: 0.8,
+        fillOpacity: 0.3,
       };
     },
     onEachFeature: (feature, layer) => {
@@ -181,7 +181,7 @@ function initGeoJSONLayers(regions, events, Theme, Panel, activeSnapshot) {
         fillColor: Theme.colorFor(Theme.current, feature.properties[Theme.current] || "#fff"),
         color: "#3a2c1a",
         weight: 1,
-        fillOpacity: 0.8,
+        fillOpacity: 0.3,
         eventIndex: feature.properties.eventIndex,
       });
     },
@@ -215,7 +215,7 @@ function updateMapForYear(year, regions, events, Theme, activeSnapshot) {
           fillColor: Theme.colorFor(Theme.current, snap[Theme.current]),
           color: Theme.current === "territory" ? "var(--ink)" : "none",
           weight: Theme.current === "territory" ? 1 : 0,
-          fillOpacity: 0.8,
+          fillOpacity: 0.3,
         });
         layer.feature.properties = { ...layer.feature.properties, ...snap };
       }
@@ -230,7 +230,7 @@ function updateMapForYear(year, regions, events, Theme, activeSnapshot) {
       
       // Gestion de la visibilité des événements passés/futurs
       layer.setStyle({
-        fillOpacity: visible ? 0.8 : 0,
+        fillOpacity: visible ? 0.3 : 0,
         opacity: visible ? 1 : 0,
         weight: visible ? 1 : 0
       });
