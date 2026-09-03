@@ -1,4 +1,5 @@
 import {Projection} from "./projection.js";
+import {activeSnapshot} from "./data.js";
 
 export function createMapRenderer({REGIONS,EVENTS,Theme}){
   const ns="http://www.w3.org/2000/svg";

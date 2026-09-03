@@ -1,4 +1,4 @@
-import {loadData} from "./data.js";
+import {loadData,activeSnapshot} from "./data.js";
 import {createTheme} from "./theme.js";
 import {createMapRenderer} from "./map.js";
 import {createPanel} from "./panel.js";

@@ -1,24 +1,15 @@
-// Chargement des données éditoriales.
-// Les événements sont volontairement séparés : une contribution = un fichier JSON.
-export async function loadData() {
-  const [regionsResponse, manifestResponse] = await Promise.all([
+export async function loadData(){
+  const [regionsResponse, eventsResponse] = await Promise.all([
     fetch("data/regions.json"),
-    fetch("data/events/manifest.json")
+    fetch("data/events.json")
   ]);
+  if(!regionsResponse.ok || !eventsResponse.ok){
+    throw new Error("Impossible de charger les données historiques.");
+  }
+  const [REGIONS, EVENTS] = await Promise.all([regionsResponse.json(), eventsResponse.json()]);
+  return {REGIONS, EVENTS};
+}
 
-  if (!regionsResponse.ok) throw new Error(`Impossible de charger data/regions.json (${regionsResponse.status})`);
-  if (!manifestResponse.ok) throw new Error(`Impossible de charger le manifeste des événements (${manifestResponse.status})`);
-
-  const regions = await regionsResponse.json();
-  const manifest = await manifestResponse.json();
-
-  const eventResponses = await Promise.all(
-    manifest.files.map(async (file) => {
-      const response = await fetch(`data/events/${file}`);
-      if (!response.ok) throw new Error(`Impossible de charger data/events/${file} (${response.status})`);
-      return response.json();
-    })
-  );
-
-  return { regions, events: eventResponses };
+export function activeSnapshot(region, year){
+  return region.snapshots.find(s => year >= s.from && year < s.to) || region.snapshots[region.snapshots.length-1];
 }
