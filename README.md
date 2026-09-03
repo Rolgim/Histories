@@ -1,36 +1,85 @@
-# Autour de l’an mil
+# Histoires
 
-Carte historique interactive du monde, de 700 à 1400.
+Carte historique interactive du monde.
 
 ## Architecture
 
-- `index.html` : structure de la page
-- `src/` : moteur de la carte, panneau, timeline et thèmes
-- `data/` : contenu historique en JSON
-- `schemas/` : règles de validation
-- `examples/` : modèles à copier pour contribuer
-- `docs/` : guide destiné aux contributeurs et enseignants
+```text
+index.html
+src/                    # code de l'application
+data/
+  regions.json          # régions historiques
+  events/               # 1 événement = 1 fichier JSON
+schemas/                # règles de validation
+examples/               # modèles pour les contributeurs
+scripts/                # outils de contrôle
+docs/                   # documentation pédagogique et technique
+.github/
+  ISSUE_TEMPLATE/       # formulaire GitHub de contribution
+  workflows/            # validation automatique
+```
 
-## Contribuer
+### Pourquoi un fichier par événement ?
 
-Les contributeurs ne doivent normalement modifier que `data/` et éventuellement les fichiers de documentation.
+Pour éviter qu'une contribution touche un gros fichier partagé :
 
-1. Copiez `examples/event.example.json` ou `examples/region.example.json`.
-2. Donnez un identifiant unique en minuscules avec des tirets.
-3. Renseignez les informations et les sources.
-4. Ouvrez une Merge Request / Pull Request.
-5. La CI vérifie automatiquement la validité des JSON.
+```text
+data/events/1066-bataille-de-hastings.json
+```
+
+Une personne peut travailler sur Hastings pendant qu'une autre ajoute Kiev, sans modifier le même fichier.
+
+Le navigateur charge la liste depuis `data/events/manifest.json`.
 
 ## Tester localement
 
-Le navigateur bloque généralement `fetch()` depuis `file://`. Lancez donc un serveur local, par exemple :
+Depuis la racine :
 
 ```bash
 python -m http.server 8000
 ```
 
-Puis ouvrez `http://localhost:8000/`.
+Puis ouvrir :
 
-## Philosophie
+```text
+http://localhost:8000/
+```
 
-Le code de visualisation reste séparé du contenu historique. Cela permet aux historiens, enseignants et étudiants de contribuer sans avoir à modifier le JavaScript.
+Ne pas ouvrir `index.html` directement en `file://`, car l'application charge les JSON avec `fetch()`.
+
+## Valider les données
+
+Installer la dépendance :
+
+```bash
+python -m pip install jsonschema
+```
+
+Puis :
+
+```bash
+python scripts/validate_data.py
+```
+
+La même validation est exécutée automatiquement lors des Pull Requests GitHub.
+
+## Ajouter un événement
+
+Le moyen recommandé pour les enseignants est le formulaire GitHub :
+
+**Issues → Ajouter un événement historique**
+
+Le code de l'application n'a pas besoin d'être modifié.
+
+Pour une contribution Git directe, copier `examples/event.example.json`, le renommer avec un identifiant unique et placer le fichier dans `data/events/`, puis lancer la validation.
+
+## Licence / sources
+
+À compléter selon les choix éditoriaux du projet.
+
+## Flux de contribution automatique
+
+Un contributeur peut proposer un événement via **Issues → Ajouter un événement historique**.
+Une GitHub Action transforme automatiquement le formulaire en fichier JSON, lance la validation et ouvre une Pull Request.
+
+Voir `docs/WORKFLOW_GITHUB.md`.
