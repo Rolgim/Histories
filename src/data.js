@@ -1,12 +1,16 @@
+// ============================================================
+// CHARGEMENT DES DONNÉES
+// ============================================================
+
 export async function loadData() {
-  const [regionsResponse, manifestResponse] = await Promise.all([
-    fetch("data/regions.json"),
+  const [historicalDataResponse, manifestResponse] = await Promise.all([
+    fetch("data/historical-enrichment.json"),
     fetch("data/events/manifest.json")
   ]);
 
-  if (!regionsResponse.ok) {
+  if (!historicalDataResponse.ok) {
     throw new Error(
-      `Impossible de charger data/regions.json (${regionsResponse.status})`
+      `Impossible de charger data/historical-enrichment.json (${historicalDataResponse.status})`
     );
   }
 
@@ -16,25 +20,67 @@ export async function loadData() {
     );
   }
 
-  const regions = await regionsResponse.json();
-  const manifest = await manifestResponse.json();
+  const historicalData =
+    await historicalDataResponse.json();
 
-  const eventResponses = await Promise.all(
-    manifest.files.map(async (file) => {
-      const response = await fetch(`data/events/${file}`);
+  const manifest =
+    await manifestResponse.json();
 
-      if (!response.ok) {
-        throw new Error(
-          `Impossible de charger data/events/${file} (${response.status})`
-        );
-      }
 
-      return response.json();
-    })
-  );
+  // ----------------------------------------------------------
+  // ÉVÉNEMENTS
+  // ----------------------------------------------------------
+
+  const eventResponses =
+    await Promise.all(
+      manifest.files.map(async (file) => {
+
+        const response =
+          await fetch(`data/events/${file}`);
+
+        if (!response.ok) {
+          throw new Error(
+            `Impossible de charger data/events/${file} (${response.status})`
+          );
+        }
+
+        return response.json();
+      })
+    );
+
+
+  // ----------------------------------------------------------
+  // NORMALISATION DU NOUVEAU DATASET
+  // ----------------------------------------------------------
+  //
+  // Le nouveau JSON est organisé par nom :
+  //
+  // {
+  //   names: {
+  //     "Rome": {...},
+  //     "Byzance": {...}
+  //   }
+  // }
+  //
+  // On transforme simplement l'objet en tableau pour
+  // faciliter l'utilisation dans les panneaux.
+  //
+
+  const historicalNames =
+    historicalData?.names &&
+    typeof historicalData.names === "object"
+      ? Object.entries(historicalData.names).map(
+          ([name, data]) => ({
+            name,
+            ...data
+          })
+        )
+      : [];
+
 
   return {
-    regions,
+    historicalData,
+    historicalNames,
     events: eventResponses
   };
 }

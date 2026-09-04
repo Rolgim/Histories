@@ -4,13 +4,21 @@ import {
   loadHistoricalIndex,
   loadHistoricalGeoJSON
 } from "./data.js";
-import { getDeterministicColor, escapeHtml } from "./utils.js";
+
+import {
+  getDeterministicColor,
+  escapeHtml
+} from "./utils.js";
+
 import { createTheme } from "./theme.js";
 import { createPanel } from "./panel.js";
 import { createTimeline } from "./timeline.js";
 
 
+// ============================================================
 // CARTE
+// ============================================================
+
 const worldBounds = L.latLngBounds(
   L.latLng(-90, -180),
   L.latLng(90, 180)
@@ -21,9 +29,7 @@ const map = L.map("map", {
   zoom: 2,
   minZoom: 2,
   maxZoom: 10,
-
   zoomControl: true,
-
   maxBounds: worldBounds,
   maxBoundsViscosity: 1.0
 });
@@ -60,15 +66,8 @@ let eventsLayer = null;
 
 let historicalIndex = null;
 
-// Nom du dernier fichier réellement affiché.
-// Permet d'éviter de recréer le layer lorsque le slider
-// passe de 1000 à 1005, 1010, etc. alors que le snapshot
-// historique reste world_1000.geojson.
 let displayedHistoricalFilename = null;
 
-// Identifiant de requête.
-// Évite qu'une requête ancienne écrase une requête plus récente
-// lorsque l'utilisateur déplace rapidement le slider.
 let historicalRequestId = 0;
 
 
@@ -78,10 +77,21 @@ let historicalRequestId = 0;
 
 async function main() {
 
-  const { regions, events } = await loadData();
+  const {
+    historicalData,
+    historicalNames,
+    events
+  } = await loadData();
 
-  // Index historique chargé une seule fois.
-  historicalIndex = await loadHistoricalIndex();
+
+  historicalIndex =
+    await loadHistoricalIndex();
+
+
+  console.log(
+    "Entités historiques enrichies :",
+    historicalNames.length
+  );
 
   console.log(
     "Snapshots historiques disponibles :",
@@ -89,129 +99,167 @@ async function main() {
   );
 
 
-  const Theme = createTheme(
-    regions,
-    events
-  );
+  const Theme =
+    createTheme(
+      historicalNames,
+      events
+    );
 
-  const activeSnapshotFunc = activeSnapshot;
+
+  const activeSnapshotFunc =
+    activeSnapshot;
 
 
   // ==========================================================
   // PANEL
   // ==========================================================
 
-  const Panel = createPanel({
-    REGIONS: regions,
-    EVENTS: events,
-    Theme,
+  const Panel =
+    createPanel({
 
-    MapRenderer: {
+      HISTORICAL_DATA:
+        historicalData,
 
-      setSelectedEvent: (eventIdx) => {
+      HISTORICAL_NAMES:
+        historicalNames,
 
-        if (!eventsLayer) {
-          return;
+      EVENTS:
+        events,
+
+      Theme,
+
+      MapRenderer: {
+
+        setSelectedEvent: (eventIdx) => {
+
+          if (!eventsLayer) {
+            return;
+          }
+
+          eventsLayer.eachLayer((layer) => {
+
+            const isSelected =
+              layer.options.eventIndex === eventIdx;
+
+            layer.setStyle({
+
+              radius:
+                eventIdx === null
+                  ? 5
+                  : isSelected
+                    ? 8
+                    : 5,
+
+              fillOpacity:
+                eventIdx === null
+                  ? 0.3
+                  : isSelected
+                    ? 1
+                    : 0.8,
+
+              color:
+                isSelected
+                  ? "#7a2e1f"
+                  : "#3a2c1a",
+
+              weight:
+                isSelected
+                  ? 3
+                  : 1
+            });
+
+          });
+        },
+
+        get year() {
+
+          const slider =
+            document.getElementById(
+              "year-slider"
+            );
+
+          return slider
+            ? parseInt(slider.value, 10)
+            : 1000;
         }
 
-        eventsLayer.eachLayer((layer) => {
-
-          const isSelected =
-            layer.options.eventIndex === eventIdx;
-
-          layer.setStyle({
-            radius:
-              eventIdx === null
-                ? 5
-                : isSelected
-                  ? 8
-                  : 5,
-
-            fillOpacity:
-              eventIdx === null
-                ? 0.3
-                : isSelected
-                  ? 1
-                  : 0.8,
-
-            color:
-              isSelected
-                ? "#7a2e1f"
-                : "#3a2c1a",
-
-            weight:
-              isSelected
-                ? 3
-                : 1
-          });
-
-        });
       },
 
-      get year() {
-        return parseInt(
-          document.getElementById("year-slider").value,
-          10
-        );
-      }
-    },
+      activeSnapshot:
+        activeSnapshotFunc
 
-    activeSnapshot: activeSnapshotFunc
-  });
+    });
 
 
   // ==========================================================
   // TIMELINE
   // ==========================================================
 
-  const Timeline = createTimeline({
-    MapRenderer: {
+  const Timeline =
+    createTimeline({
 
-      setYear: (year) => {
+      MapRenderer: {
 
-        document.getElementById(
-          "year-slider"
-        ).value = year;
+        setYear: (year) => {
 
-        updateMapForYear(
-          year,
-          regions,
-          events,
-          Theme,
-          activeSnapshotFunc,
-          Panel
-        );
+          const slider =
+            document.getElementById(
+              "year-slider"
+            );
+
+          if (slider) {
+            slider.value = year;
+          }
+
+          updateMapForYear(
+            year,
+            historicalNames,
+            events,
+            Theme,
+            activeSnapshotFunc,
+            Panel
+          );
+        },
+
+        get year() {
+
+          const slider =
+            document.getElementById(
+              "year-slider"
+            );
+
+          return slider
+            ? parseInt(slider.value, 10)
+            : 1000;
+        },
+
+        refresh: () => {
+
+          const slider =
+            document.getElementById(
+              "year-slider"
+            );
+
+          const year =
+            slider
+              ? parseInt(slider.value, 10)
+              : 1000;
+
+          updateMapForYear(
+            year,
+            historicalNames,
+            events,
+            Theme,
+            activeSnapshotFunc,
+            Panel
+          );
+        }
+
       },
 
+      Panel
 
-      get year() {
-        return parseInt(
-          document.getElementById("year-slider").value,
-          10
-        );
-      },
-
-
-      refresh: () => {
-
-        const year = parseInt(
-          document.getElementById("year-slider").value,
-          10
-        );
-
-        updateMapForYear(
-          year,
-          regions,
-          events,
-          Theme,
-          activeSnapshotFunc,
-          Panel
-        );
-      }
-    },
-
-    Panel
-  });
+    });
 
 
   // ==========================================================
@@ -219,7 +267,7 @@ async function main() {
   // ==========================================================
 
   await initGeoJSONLayers(
-    regions,
+    historicalNames,
     events,
     Theme,
     Panel,
@@ -236,7 +284,7 @@ async function main() {
 // ============================================================
 
 async function initGeoJSONLayers(
-  regions,
+  historicalNames,
   events,
   Theme,
   Panel,
@@ -245,7 +293,7 @@ async function initGeoJSONLayers(
 
   const currentYear =
     parseInt(
-      document.getElementById("year-slider").value,
+      document.getElementById("year-slider")?.value,
       10
     ) || 1000;
 
@@ -254,10 +302,20 @@ async function initGeoJSONLayers(
   // FRONTIÈRES HISTORIQUES
   // ==========================================================
 
+  // IMPORTANT :
+  // C'était ici l'erreur :
+  //
+  // await updateHistoricalBorders(year, ...)
+  //
+  // "year" n'existe pas dans cette fonction.
+  //
+  // On utilise currentYear.
+  //
+
   await updateHistoricalBorders(
     currentYear,
     Theme,
-    regions,
+    historicalNames,
     Panel
   );
 
@@ -269,97 +327,148 @@ async function initGeoJSONLayers(
   const eventsGeoJSON = {
     type: "FeatureCollection",
 
-    features: events.map((event, index) => ({
+    features: events
+      .map((event, index) => {
 
-      type: "Feature",
+        const lat =
+          parseFloat(event.lat);
 
-      properties: {
-        id: `event-${index}`,
-        eventIndex: index,
-        title: event.title,
-        year: event.year,
-        regionId: event.regionId,
+        const lon =
+          parseFloat(event.lon);
 
-        ...event
-      },
+        if (
+          !Number.isFinite(lat) ||
+          !Number.isFinite(lon)
+        ) {
+          console.warn(
+            "Événement ignoré : coordonnées invalides",
+            event
+          );
 
-      geometry: {
-        type: "Point",
+          return null;
+        }
 
-        coordinates: [
-          parseFloat(event.lon),
-          parseFloat(event.lat)
-        ]
-      }
+        return {
 
-    }))
+          type: "Feature",
+
+          properties: {
+
+            id:
+              `event-${index}`,
+
+            eventIndex:
+              index,
+
+            title:
+              event.title,
+
+            year:
+              event.year,
+
+            // Conservé pour compatibilité
+            regionId:
+              event.regionId,
+
+            // Éventuellement utilisé par le nouveau panel
+            historicalName:
+              event.historicalName,
+
+            historicalNames:
+              event.historicalNames,
+
+            ...event
+          },
+
+          geometry: {
+
+            type: "Point",
+
+            coordinates: [
+              lon,
+              lat
+            ]
+          }
+
+        };
+
+      })
+      .filter(Boolean)
   };
 
 
-  eventsLayer = L.geoJSON(
-    eventsGeoJSON,
-    {
+  eventsLayer =
+    L.geoJSON(
+      eventsGeoJSON,
+      {
 
-      pointToLayer: (feature, latlng) => {
+        pointToLayer: (
+          feature,
+          latlng
+        ) => {
 
-        return L.circleMarker(
-          latlng,
-          {
+          return L.circleMarker(
+            latlng,
+            {
 
-            radius: 5,
+              radius: 5,
 
-            fillColor:
-              Theme.colorFor(
-                Theme.current,
-                feature.properties[
-                  Theme.current
-                ] || "#fff"
-              ),
+              fillColor:
+                Theme.colorFor(
+                  Theme.current,
+                  feature.properties[
+                    Theme.current
+                  ] || "#fff"
+                ),
 
-            color: "#3a2c1a",
+              color:
+                "#3a2c1a",
 
-            weight: 1,
+              weight: 1,
 
-            fillOpacity: 0.3,
+              fillOpacity: 0.3,
 
-            eventIndex:
-              feature.properties.eventIndex
-          }
-        );
-      },
+              eventIndex:
+                feature.properties.eventIndex
+
+            }
+          );
+        },
 
 
-      onEachFeature: (
-        feature,
-        layer
-      ) => {
+        onEachFeature: (
+          feature,
+          layer
+        ) => {
 
-        layer.on(
-          "click",
-          (e) => {
+          layer.on(
+            "click",
+            (e) => {
 
-            e.originalEvent.stopPropagation();
+              e.originalEvent?.stopPropagation();
 
-            Panel.showEvent(
-              feature.properties.eventIndex,
-              {
-                type: "region",
-                id: feature.properties.regionId
-              }
-            );
-          }
-        );
+              Panel.showEvent(
+                feature.properties.eventIndex,
+                null
+              );
+
+            }
+          );
+
+        }
 
       }
+    )
+    .addTo(map);
 
-    }
-  ).addTo(map);
 
+  // ==========================================================
+  // PREMIÈRE MISE À JOUR
+  // ==========================================================
 
-  // Première mise à jour.
   await updateMapForYear(
     currentYear,
-    regions,
+    historicalNames,
     events,
     Theme,
     activeSnapshot,
@@ -375,7 +484,7 @@ async function initGeoJSONLayers(
 async function updateHistoricalBorders(
   year,
   Theme,
-  regions,
+  historicalNames,
   Panel
 ) {
 
@@ -389,17 +498,15 @@ async function updateHistoricalBorders(
       await loadHistoricalGeoJSON(year);
 
 
-    // Une requête plus récente existe.
-    if (requestId !== historicalRequestId) {
+    if (
+      requestId !== historicalRequestId
+    ) {
       return;
     }
 
 
     // --------------------------------------------------------
-    // IMPORTANT :
-    //
-    // Si le fichier historique est identique à celui affiché,
-    // inutile de reconstruire le layer.
+    // Le snapshot demandé est le même que celui affiché.
     // --------------------------------------------------------
 
     if (
@@ -433,45 +540,46 @@ async function updateHistoricalBorders(
     // Crée le nouveau layer.
     // --------------------------------------------------------
 
-    regionsLayer = L.geoJSON(
-      historical.geojson,
-      {
+    regionsLayer =
+      L.geoJSON(
+        historical.geojson,
+        {
 
-        style: (feature) => {
+          style: (feature) => {
 
-          return historicalBorderStyle(
+            return historicalBorderStyle(
+              feature,
+              Theme
+            );
+          },
+
+
+          onEachFeature: (
             feature,
-            Theme
-          );
-        },
+            layer
+          ) => {
 
+            setupHistoricalFeature(
+              feature,
+              layer,
+              historicalNames,
+              Panel
+            );
 
-        onEachFeature: (
-          feature,
-          layer
-        ) => {
+          }
 
-          setupHistoricalFeature(
-            feature,
-            layer,
-            regions,
-            Panel
-          );
         }
-
-      }
-    );
+      );
 
 
     regionsLayer.addTo(map);
 
 
-    // Mémorise le snapshot affiché.
     displayedHistoricalFilename =
       historical.filename;
 
 
-    // Les événements doivent rester au-dessus.
+    // Les événements restent au-dessus.
     if (eventsLayer) {
       eventsLayer.bringToFront();
     }
@@ -505,6 +613,7 @@ function historicalBorderStyle(
   const props =
     feature?.properties || {};
 
+
   const precision =
     Number(
       props.BORDERPRECISION
@@ -514,6 +623,7 @@ function historicalBorderStyle(
   // ==========================================================
   // MODE TERRITOIRE
   // ==========================================================
+
   if (
     Theme.current === "territory"
   ) {
@@ -525,12 +635,16 @@ function historicalBorderStyle(
       cleanValue(
         props.NAME
       ) ||
-      "Entité inconnue"; // Modifié ici pour correspondre à votre condition
+      "Unknown";
 
-    // Ajustement de l'opacité selon le sujet
+
+    const isUnknown =
+      subject === "Unknown";
+
+
     const fillOpacity =
-      subject === "Entité inconnue"
-        ? 0 // Transparence pure
+      isUnknown
+        ? 0
         : precision === 3
           ? 0.38
           : precision === 2
@@ -540,11 +654,12 @@ function historicalBorderStyle(
 
     return {
 
-      // On applique une couleur transparente ou générée
       fillColor:
-        subject === "Entité inconnue"
+        isUnknown
           ? "transparent"
-          : getDeterministicColor(subject),
+          : getDeterministicColor(
+              subject
+            ),
 
       fillOpacity,
 
@@ -566,16 +681,9 @@ function historicalBorderStyle(
   }
 
 
-
   // ==========================================================
   // AUTRES MODES
   // ==========================================================
-  //
-  // Aourednik ne fournit pas directement religion/langue/ethnie
-  // pour chaque polygon.
-  //
-  // On garde donc les frontières visibles mais neutres.
-  //
 
   return {
 
@@ -602,7 +710,7 @@ function historicalBorderStyle(
 
 
 // ============================================================
-// MET À JOUR LES STYLES SANS RECHARGER LE GEOJSON
+// MET À JOUR LES STYLES
 // ============================================================
 
 function updateHistoricalBorderStyles(
@@ -626,6 +734,7 @@ function updateHistoricalBorderStyles(
           Theme
         )
       );
+
     }
   );
 }
@@ -638,7 +747,7 @@ function updateHistoricalBorderStyles(
 function setupHistoricalFeature(
   feature,
   layer,
-  regions,
+  historicalNames,
   Panel
 ) {
 
@@ -650,7 +759,7 @@ function setupHistoricalFeature(
     cleanValue(
       props.NAME
     ) ||
-    "Entité inconnue";
+    "Unknown";
 
 
   const subject =
@@ -696,75 +805,123 @@ function setupHistoricalFeature(
 
 
   // ----------------------------------------------------------
-  // Clic : ouvre le panneau.
-  //
-  // NAME/SUBJECTO (fond de carte historique aourednik) ne
-  // correspondent pas à l'id de regions.json. On tente donc
-  // une correspondance approximative par nom ; si rien ne
-  // matche, on affiche quand même le nom/sujet/rattachement
-  // du polygone, sans données éditoriales ni événements.
+  // CLIC
   // ----------------------------------------------------------
 
   layer.on("click", (e) => {
+
     e.originalEvent?.stopPropagation();
 
-    const matchedRegion = findMatchingRegion(
-      { name, subject },
-      regions
-    );
+
+    const entity =
+      findHistoricalEntity(
+        name,
+        subject,
+        historicalNames
+      );
+
 
     Panel.showTerritoryInfo({
+
       name,
+
       subject,
+
       partOf,
-      matchedRegionId: matchedRegion?.id ?? null
+
+      historicalEntity:
+        entity || null
+
     });
+
   });
 }
 
 
 // ============================================================
-// CORRESPONDANCE APPROXIMATIVE FOND HISTORIQUE <-> regions.json
-// ============================================================
-//
-// Simple correspondance par nom normalisé (minuscules, sans
-// accents/ponctuation). Volontairement basique : un vrai
-// mapping fiable demande une curation manuelle par période
-// (voir la discussion sur l'enrichissement du dataset aourednik).
+// NORMALISATION
 // ============================================================
 
 function normalizeForMatch(value) {
+
   return String(value || "")
     .toLowerCase()
     .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[^a-z0-9]+/g, " ")
+    .replace(
+      /[\u0300-\u036f]/g,
+      ""
+    )
+    .replace(
+      /[^a-z0-9]+/g,
+      " "
+    )
     .trim();
 }
 
-function findMatchingRegion({ name, subject }, regions) {
-  if (!Array.isArray(regions)) {
+
+// ============================================================
+// CORRESPONDANCE AOURednik <-> NOUVEAU DATASET
+// ============================================================
+
+function findHistoricalEntity(
+  name,
+  subject,
+  historicalNames
+) {
+
+  if (
+    !Array.isArray(historicalNames)
+  ) {
     return null;
   }
 
+
   const candidates = [
-    normalizeForMatch(name),
-    normalizeForMatch(subject)
-  ].filter(Boolean);
+    name,
+    subject
+  ]
+    .map(normalizeForMatch)
+    .filter(Boolean);
+
 
   if (!candidates.length) {
     return null;
   }
 
-  return (
-    regions.find((region) => {
-      const regionName = normalizeForMatch(region.name);
-      const regionId = normalizeForMatch(region.id);
-      return candidates.some(
-        (c) => c === regionName || c === regionId
-      );
-    }) || null
-  );
+
+  for (
+    const entity of historicalNames
+  ) {
+
+    const names = [
+
+      entity.name,
+
+      ...(Array.isArray(entity.variants)
+        ? entity.variants
+        : [])
+
+    ]
+      .map(normalizeForMatch)
+      .filter(Boolean);
+
+
+    if (
+      names.some(
+        (candidateName) =>
+          candidates.includes(
+            candidateName
+          )
+      )
+    ) {
+
+      return entity;
+    }
+
+  }
+
+
+  return null;
 }
 
 
@@ -774,7 +931,7 @@ function findMatchingRegion({ name, subject }, regions) {
 
 async function updateMapForYear(
   year,
-  regions,
+  historicalNames,
   events,
   Theme,
   activeSnapshot,
@@ -788,7 +945,7 @@ async function updateMapForYear(
   await updateHistoricalBorders(
     year,
     Theme,
-    regions,
+    historicalNames,
     Panel
   );
 
@@ -815,7 +972,8 @@ async function updateMapForYear(
 
 
         const visible =
-          event.year <= year;
+          Number(event.year) <=
+          Number(year);
 
 
         layer.setStyle({
@@ -834,6 +992,7 @@ async function updateMapForYear(
             visible
               ? 1
               : 0
+
         });
 
 
@@ -845,15 +1004,20 @@ async function updateMapForYear(
 
             layer.setRadius(8);
 
-          } else {
+          }
+          else {
 
             layer.setRadius(5);
+
           }
 
-        } else {
+        }
+        else {
 
           layer.setRadius(0);
+
           layer.closePopup();
+
         }
 
       }
@@ -862,7 +1026,7 @@ async function updateMapForYear(
 
 
   // ----------------------------------------------------------
-  // 3. COULEUR DES ÉVÉNEMENTS
+  // 3. COULEURS
   // ----------------------------------------------------------
 
   updateEventStyles(
@@ -873,7 +1037,7 @@ async function updateMapForYear(
 
 
 // ============================================================
-// ÉVÉNEMENTS : MISE À JOUR DES COULEURS
+// ÉVÉNEMENTS : COULEURS
 // ============================================================
 
 function updateEventStyles(
@@ -922,7 +1086,7 @@ function updateEventStyles(
 
 
 // ============================================================
-// UTILITAIRES
+// UTILITAIRE
 // ============================================================
 
 function cleanValue(value) {
@@ -931,7 +1095,6 @@ function cleanValue(value) {
     value === null ||
     value === undefined
   ) {
-
     return "";
   }
 
@@ -957,6 +1120,8 @@ main().catch(
 
       hint.textContent =
         "Erreur de chargement des données. Utilisez un serveur local.";
+
     }
+
   }
 );
