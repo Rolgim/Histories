@@ -8,7 +8,6 @@ import { getDeterministicColor, escapeHtml } from "./utils.js";
 import { createTheme } from "./theme.js";
 import { createPanel } from "./panel.js";
 import { createTimeline } from "./timeline.js";
-import { createThemeSwitcher } from "./theme-switcher.js";
 
 
 // CARTE
@@ -109,15 +108,6 @@ async function main() {
 
     MapRenderer: {
 
-      setYear: (year) => {
-        updateMapForYear(
-          year,
-          regions,
-          events,
-          Theme,
-          activeSnapshotFunc
-        );
-      },
       setSelectedEvent: (eventIdx) => {
 
         if (!eventsLayer) {
@@ -163,88 +153,10 @@ async function main() {
           document.getElementById("year-slider").value,
           10
         );
-      },
-
-
-      refresh: () => {
-
-        const year = parseInt(
-          document.getElementById("year-slider").value,
-          10
-        );
-
-        updateMapForYear(
-          year,
-          regions,
-          events,
-          Theme,
-          activeSnapshotFunc
-        );
       }
     },
 
     activeSnapshot: activeSnapshotFunc
-  });
-
-
-  // ==========================================================
-  // THEME SWITCHER
-  // ==========================================================
-
-  const ThemeSwitcher = createThemeSwitcher({
-    REGIONS: regions,
-    EVENTS: events,
-    Theme,
-
-    MapRenderer: {
-
-      refresh: () => {
-
-        const year = parseInt(
-          document.getElementById("year-slider").value,
-          10
-        );
-        
-        
-        updateMapForYear(
-          year,
-          regions,
-          events,
-          Theme,
-          activeSnapshotFunc
-        );
-      },
-
-
-      get year() {
-        return parseInt(
-          document.getElementById("year-slider").value,
-          10
-        );
-      },
-
-      getHistoricalLegend() {
-        if (!regionsLayer) return [];
-      
-        const values = new Map(); // Utilise une Map pour éviter les doublons
-      
-        regionsLayer.eachLayer(layer => {
-          const props = layer.feature?.properties || {};
-          const value = cleanValue(props.SUBJECTO) || cleanValue(props.NAME);
-          if (value && value !== "Entité inconnue" && !values.has(value)) {
-            values.set(value, getDeterministicColor(value));
-          }
-        });
-      
-        // Retourne un tableau de {value, color}
-        return Array.from(values.entries()).map(([value, color]) => ({ value, color }));
-      },
-
-    },
-
-    activeSnapshot: activeSnapshotFunc,
-
-    Panel
   });
 
 
@@ -266,7 +178,8 @@ async function main() {
           regions,
           events,
           Theme,
-          activeSnapshotFunc
+          activeSnapshotFunc,
+          Panel
         );
       },
 
@@ -291,12 +204,12 @@ async function main() {
           regions,
           events,
           Theme,
-          activeSnapshotFunc
+          activeSnapshotFunc,
+          Panel
         );
       }
     },
 
-    ThemeSwitcher,
     Panel
   });
 
@@ -314,7 +227,6 @@ async function main() {
   );
 
 
-  ThemeSwitcher.init();
   Timeline.init();
 }
 
@@ -344,7 +256,9 @@ async function initGeoJSONLayers(
 
   await updateHistoricalBorders(
     currentYear,
-    Theme
+    Theme,
+    regions,
+    Panel
   );
 
 
@@ -448,7 +362,8 @@ async function initGeoJSONLayers(
     regions,
     events,
     Theme,
-    activeSnapshot
+    activeSnapshot,
+    Panel
   );
 }
 
@@ -459,7 +374,9 @@ async function initGeoJSONLayers(
 
 async function updateHistoricalBorders(
   year,
-  Theme
+  Theme,
+  regions,
+  Panel
 ) {
 
   const requestId =
@@ -536,7 +453,9 @@ async function updateHistoricalBorders(
 
           setupHistoricalFeature(
             feature,
-            layer
+            layer,
+            regions,
+            Panel
           );
         }
 
@@ -718,7 +637,9 @@ function updateHistoricalBorderStyles(
 
 function setupHistoricalFeature(
   feature,
-  layer
+  layer,
+  regions,
+  Panel
 ) {
 
   const props =
@@ -775,14 +696,75 @@ function setupHistoricalFeature(
 
 
   // ----------------------------------------------------------
-  // Pour l'instant :
+  // Clic : ouvre le panneau.
   //
-  // on NE fait PAS Panel.showRegionOrGroup(name)
-  //
-  // car NAME n'est pas l'id de ton regions.json.
-  //
-  // Le mapping viendra dans une deuxième étape.
+  // NAME/SUBJECTO (fond de carte historique aourednik) ne
+  // correspondent pas à l'id de regions.json. On tente donc
+  // une correspondance approximative par nom ; si rien ne
+  // matche, on affiche quand même le nom/sujet/rattachement
+  // du polygone, sans données éditoriales ni événements.
   // ----------------------------------------------------------
+
+  layer.on("click", (e) => {
+    e.originalEvent?.stopPropagation();
+
+    const matchedRegion = findMatchingRegion(
+      { name, subject },
+      regions
+    );
+
+    Panel.showTerritoryInfo({
+      name,
+      subject,
+      partOf,
+      matchedRegionId: matchedRegion?.id ?? null
+    });
+  });
+}
+
+
+// ============================================================
+// CORRESPONDANCE APPROXIMATIVE FOND HISTORIQUE <-> regions.json
+// ============================================================
+//
+// Simple correspondance par nom normalisé (minuscules, sans
+// accents/ponctuation). Volontairement basique : un vrai
+// mapping fiable demande une curation manuelle par période
+// (voir la discussion sur l'enrichissement du dataset aourednik).
+// ============================================================
+
+function normalizeForMatch(value) {
+  return String(value || "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+}
+
+function findMatchingRegion({ name, subject }, regions) {
+  if (!Array.isArray(regions)) {
+    return null;
+  }
+
+  const candidates = [
+    normalizeForMatch(name),
+    normalizeForMatch(subject)
+  ].filter(Boolean);
+
+  if (!candidates.length) {
+    return null;
+  }
+
+  return (
+    regions.find((region) => {
+      const regionName = normalizeForMatch(region.name);
+      const regionId = normalizeForMatch(region.id);
+      return candidates.some(
+        (c) => c === regionName || c === regionId
+      );
+    }) || null
+  );
 }
 
 
@@ -795,7 +777,8 @@ async function updateMapForYear(
   regions,
   events,
   Theme,
-  activeSnapshot
+  activeSnapshot,
+  Panel
 ) {
 
   // ----------------------------------------------------------
@@ -804,7 +787,9 @@ async function updateMapForYear(
 
   await updateHistoricalBorders(
     year,
-    Theme
+    Theme,
+    regions,
+    Panel
   );
 
 

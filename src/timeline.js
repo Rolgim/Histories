@@ -1,4 +1,4 @@
-export function createTimeline({ MapRenderer, ThemeSwitcher, Panel }) {
+export function createTimeline({ MapRenderer, Panel }) {
   const slider = document.getElementById("year-slider");
   const yearNum = document.getElementById("year-num");
   const playBtn = document.getElementById("play-btn");
@@ -9,7 +9,6 @@ export function createTimeline({ MapRenderer, ThemeSwitcher, Panel }) {
   function setYear(y) {
     yearNum.textContent = y;
     MapRenderer.setYear(y);
-    ThemeSwitcher.renderLegend();
     Panel.refreshOpenPanel();
   }
 
@@ -41,7 +40,7 @@ export function createTimeline({ MapRenderer, ThemeSwitcher, Panel }) {
       }
       slider.value = y;
       setYear(y);
-    }, 360); // Intervalle de 180ms (ajustable si nécessaire)
+    }, 360); // Intervalle de 360ms (ajustable si nécessaire)
   });
 
   return { init: () => setYear(parseInt(slider.value, 10)) };

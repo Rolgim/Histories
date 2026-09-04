@@ -104,6 +104,33 @@ export function createPanel({ REGIONS, EVENTS, Theme, MapRenderer, activeSnapsho
     MapRenderer.setSelectedEvent(null);
   }
 
+  // Territoire issu du fond de carte historique (aourednik).
+  // Si une région éditoriale correspondante existe (matchedRegionId), on
+  // réutilise showRegion() pour avoir les tags + événements liés.
+  // Sinon, on affiche ce qu'on sait du polygone historique lui-même
+  // (nom / sujet / rattachement), sans données éditoriales ni événements.
+  function showTerritoryInfo({ name, subject, partOf, matchedRegionId }) {
+    if (matchedRegionId) {
+      showRegion(matchedRegionId);
+      return;
+    }
+
+    lastContext = null;
+
+    body.innerHTML = `
+      <div id="panel-year">Frontière historique</div>
+      <div id="panel-title">${name || "Entité inconnue"}</div>
+      <div id="panel-desc">
+        ${subject && subject !== name ? `<p>${subject}</p>` : ""}
+        ${partOf ? `<p><small>Rattaché à : ${partOf}</small></p>` : ""}
+        <p style="font-style:italic;">Aucune donnée éditoriale (religion, langue, ethnie, événements) n'est encore associée à ce territoire.</p>
+      </div>
+    `;
+    backBtn.style.display = "none";
+    open();
+    MapRenderer.setSelectedEvent(null);
+  }
+
   function showRegionOrGroup(regionId) {
     if (Theme.current === "territory") showRegion(regionId);
     else {
@@ -124,6 +151,7 @@ export function createPanel({ REGIONS, EVENTS, Theme, MapRenderer, activeSnapsho
     showRegion,
     showGroup,
     showRegionOrGroup,
+    showTerritoryInfo,
     close,
     refreshOpenPanel: () => {
       if (!panel.classList.contains("open") || !lastContext) return;
