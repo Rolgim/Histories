@@ -18,12 +18,12 @@ export function createTimeline({ MapRenderer, Panel }) {
     if (playing) {
       clearInterval(timer);
       playing = false;
-      this.textContent = "▶ parcourir -2000→2000";
+      this.textContent = "▶ ab -2000 ad 2000";
       return;
     }
 
     playing = true;
-    this.textContent = "❚❚ pause";
+    this.textContent = "❚❚";
 
     // Si on est déjà à la fin, on recommence depuis -2000
     if (parseInt(slider.value, 10) >= 2000) {
@@ -36,7 +36,7 @@ export function createTimeline({ MapRenderer, Panel }) {
         y = 2000;
         clearInterval(timer);
         playing = false;
-        playBtn.textContent = "▶ parcourir -2000→2000";
+        playBtn.textContent = "▶ ab -2000 ad 2000";
       }
       slider.value = y;
       setYear(y);

@@ -34,7 +34,7 @@ header p{margin:0;font-size:13px;color:var(--ink-soft);font-style:italic;}
 .event-row.future{opacity:.4;}
 .event-row-year{font-family:var(--serif-title);font-size:11px;color:var(--ink-soft);}
 .event-row-title{font-size:14px;transition:color .15s;}
-#timeline{flex-shrink:0;border-top:2px solid var(--gold);padding:12px 22px 14px;background:var(--parch2);}
+#timeline{flex-shrink:0;border-top:2px solid var(--gold);padding:12px 22px 14px;background:var(--parch2);height: 10vh;}
 #timeline-top{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:6px;}
 #year-display{font-family:var(--serif-title);font-size:22px;color:var(--ink);}
 #year-display span{color:var(--oxblood);}

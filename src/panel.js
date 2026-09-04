@@ -28,7 +28,7 @@ export function createPanel({ REGIONS, EVENTS, Theme, MapRenderer, activeSnapsho
     const e = EVENTS[i];
     if (cameFromContext) lastContext = cameFromContext;
     body.innerHTML = `
-      <div id="panel-year">An ${e.year}</div>
+      <div id="panel-year">Year ${e.year}</div>
       <div id="panel-title">${e.title}</div>
       <div id="panel-tags">${tagsHTML(e)}</div>
       <div id="panel-desc"><p>${e.desc}</p></div>
@@ -47,7 +47,7 @@ export function createPanel({ REGIONS, EVENTS, Theme, MapRenderer, activeSnapsho
             <div class="event-row-title">${e.title}</div>
           </div>
         `)
-        .join("") || "<p style='font-size:13px;font-style:italic;'>Aucun événement enregistré pour l'instant.</p>"
+        .join("") || "<p style='font-size:13px;font-style:italic;'>No events have been recorded yet.</p>"
     );
   }
 
@@ -70,7 +70,7 @@ export function createPanel({ REGIONS, EVENTS, Theme, MapRenderer, activeSnapsho
       <div id="panel-title">${region.name}</div>
       <div id="panel-tags">${tagsHTML(snap)}</div>
       ${snap.note ? `<div id="panel-desc" style="margin-bottom:14px;"><p><em>${snap.note}</em></p></div>` : ""}
-      <div style="font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:var(--ink-soft);margin:6px 0 4px;">Événements liés</div>
+      <div style="font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:var(--ink-soft);margin:6px 0 4px;">Related events</div>
       ${eventRowsHTML(related)}
     `;
     wireEventRows();
@@ -93,9 +93,9 @@ export function createPanel({ REGIONS, EVENTS, Theme, MapRenderer, activeSnapsho
       <div id="panel-title">${value}</div>
       <div id="panel-tags">${memberRegions.map((r) => `<span class="tag">${r.name}</span>`).join("")}</div>
       <div id="panel-desc" style="margin-bottom:14px;">
-        <p>${memberRegions.length} zone${memberRegions.length > 1 ? "s" : ""} actuellement associée${memberRegions.length > 1 ? "s" : ""} à « ${value} », en l'an ${year}.</p>
+        <p>${memberRegions.length} zone${memberRegions.length > 1 ? "s" : ""} currently affiliated${memberRegions.length > 1 ? "s" : ""} to « ${value} », in year ${year}.</p>
       </div>
-      <div style="font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:var(--ink-soft);margin:6px 0 4px;">Événements liés</div>
+      <div style="font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:var(--ink-soft);margin:6px 0 4px;">Related events</div>
       ${eventRowsHTML(related)}
     `;
     wireEventRows();
@@ -118,12 +118,12 @@ export function createPanel({ REGIONS, EVENTS, Theme, MapRenderer, activeSnapsho
     lastContext = null;
 
     body.innerHTML = `
-      <div id="panel-year">Frontière historique</div>
-      <div id="panel-title">${name || "Entité inconnue"}</div>
+      <div id="panel-year">Historical border</div>
+      <div id="panel-title">${name || "Unknown"}</div>
       <div id="panel-desc">
         ${subject && subject !== name ? `<p>${subject}</p>` : ""}
-        ${partOf ? `<p><small>Rattaché à : ${partOf}</small></p>` : ""}
-        <p style="font-style:italic;">Aucune donnée éditoriale (religion, langue, ethnie, événements) n'est encore associée à ce territoire.</p>
+        ${partOf ? `<p><small>Affiliated with : ${partOf}</small></p>` : ""}
+        <p style="font-style:italic;">No cultural data (religion, language, ethnicity, events) has yet been associated with this territory.</p>
       </div>
     `;
     backBtn.style.display = "none";
