@@ -10,9 +10,10 @@ import {
   escapeHtml
 } from "./utils.js";
 
-import { createTheme } from "./theme.js";
+import { createTheme, dominantValue } from "./theme.js";
 import { createPanel } from "./panel.js";
 import { createTimeline } from "./timeline.js";
+import { createThemeSwitcher } from "./theme-switcher.js";
 
 
 // ============================================================
@@ -192,6 +193,88 @@ async function main() {
 
 
   // ==========================================================
+  // SÉLECTEUR DE MODE (territoire / religion / langue / ethnie)
+  // ==========================================================
+
+  const ThemeSwitcher =
+    createThemeSwitcher({
+
+      Theme,
+
+      Panel,
+
+      MapRenderer: {
+
+        get year() {
+
+          const slider =
+            document.getElementById("year-slider");
+
+          return slider
+            ? parseInt(slider.value, 10)
+            : 1000;
+        },
+
+        refresh: () => {
+
+          const slider =
+            document.getElementById("year-slider");
+
+          const year =
+            slider
+              ? parseInt(slider.value, 10)
+              : 1000;
+
+          updateMapForYear(
+            year,
+            historicalNames,
+            events,
+            Theme,
+            activeSnapshotFunc,
+            Panel
+          );
+        },
+
+        // Légende du mode "territoire" : dérivée des polygones
+        // actuellement affichés (sujet -> couleur déterministe).
+        getHistoricalLegend: () => {
+
+          if (!regionsLayer) {
+            return [];
+          }
+
+          const seen = new Map();
+
+          regionsLayer.eachLayer((layer) => {
+
+            const props = layer.feature?.properties || {};
+
+            const subject =
+              cleanValue(props.SUBJECTO) ||
+              cleanValue(props.NAME) ||
+              "Unknown";
+
+            if (subject === "Unknown" || seen.has(subject)) {
+              return;
+            }
+
+            seen.set(
+              subject,
+              getDeterministicColor(subject)
+            );
+          });
+
+          return [...seen.entries()]
+            .map(([value, color]) => ({ value, color }))
+            .sort((a, b) => a.value.localeCompare(b.value));
+        }
+
+      }
+
+    });
+
+
+  // ==========================================================
   // TIMELINE
   // ==========================================================
 
@@ -274,6 +357,8 @@ async function main() {
     activeSnapshotFunc
   );
 
+
+  ThemeSwitcher.init();
 
   Timeline.init();
 }
@@ -515,7 +600,8 @@ async function updateHistoricalBorders(
     ) {
 
       updateHistoricalBorderStyles(
-        Theme
+        Theme,
+        historicalNames
       );
 
       return;
@@ -549,7 +635,8 @@ async function updateHistoricalBorders(
 
             return historicalBorderStyle(
               feature,
-              Theme
+              Theme,
+              historicalNames
             );
           },
 
@@ -607,7 +694,8 @@ async function updateHistoricalBorders(
 
 function historicalBorderStyle(
   feature,
-  Theme
+  Theme,
+  historicalNames
 ) {
 
   const props =
@@ -682,16 +770,46 @@ function historicalBorderStyle(
 
 
   // ==========================================================
-  // AUTRES MODES
+  // AUTRES MODES (religion / langue / ethnie)
   // ==========================================================
+  //
+  // On colore par la valeur DOMINANTE (première valeur Wikidata) de
+  // l'entité enrichie correspondante. Le détail complet (toutes les
+  // valeurs) reste consultable dans le panneau au clic. Les valeurs
+  // hors du "top N" sont regroupées visuellement sous une même teinte
+  // grise ("Autres"), voir theme.js.
+  // ==========================================================
+
+  const subjectForLookup =
+    cleanValue(props.SUBJECTO) ||
+    cleanValue(props.NAME) ||
+    "";
+
+  const entity =
+    subjectForLookup
+      ? findHistoricalEntity(
+          cleanValue(props.NAME),
+          cleanValue(props.SUBJECTO),
+          historicalNames || []
+        )
+      : null;
+
+  const dominant =
+    entity
+      ? dominantValue(entity, Theme.current)
+      : null;
+
+  const fillColor =
+    dominant
+      ? Theme.colorFor(Theme.current, dominant)
+      : "transparent";
 
   return {
 
-    fillColor:
-      "#ffffff",
+    fillColor,
 
     fillOpacity:
-      0,
+      dominant ? 0.32 : 0,
 
     color:
       "#6b5a45",
@@ -714,7 +832,8 @@ function historicalBorderStyle(
 // ============================================================
 
 function updateHistoricalBorderStyles(
-  Theme
+  Theme,
+  historicalNames
 ) {
 
   if (!regionsLayer) {
@@ -731,7 +850,8 @@ function updateHistoricalBorderStyles(
       layer.setStyle(
         historicalBorderStyle(
           layer.feature,
-          Theme
+          Theme,
+          historicalNames
         )
       );
 
