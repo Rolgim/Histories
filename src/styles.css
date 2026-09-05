@@ -45,3 +45,16 @@ input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:15px;heigh
 #ticks{display:flex;justify-content:space-between;font-size:10px;color:var(--ink-soft);margin-top:2px;}
 ::-webkit-scrollbar{width:8px;}
 ::-webkit-scrollbar-thumb{background:var(--gold);border-radius:4px;}
+@media (max-width: 720px){
+  #panel.open{
+    position:fixed; inset:0; width:100%; z-index:1000;
+    border-left:none;
+  }
+  #panel-inner{width:100%;}
+  #timeline{height:auto; padding:10px 14px 12px;}
+  #ticks{font-size:8.5px;}
+  #play-btn{padding:8px 14px;} /* cible tactile plus grande */
+  .tag{padding:5px 10px;}
+  header h1{font-size:20px;}
+  header p{font-size:11px;}
+}
