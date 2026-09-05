@@ -10,13 +10,13 @@ export async function loadData() {
 
   if (!historicalDataResponse.ok) {
     throw new Error(
-      `Impossible de charger data/historical-enrichment.json (${historicalDataResponse.status})`
+      `Failed to load data/historical-enrichment.json (${historicalDataResponse.status})`
     );
   }
 
   if (!manifestResponse.ok) {
     throw new Error(
-      `Impossible de charger le manifeste des événements (${manifestResponse.status})`
+      `Failed to load the events manifest (${manifestResponse.status})`
     );
   }
 
@@ -40,7 +40,7 @@ export async function loadData() {
 
         if (!response.ok) {
           throw new Error(
-            `Impossible de charger data/events/${file} (${response.status})`
+            `Failed to load data/events/${file} (${response.status})`
           );
         }
 
@@ -176,7 +176,7 @@ export async function loadHistoricalIndex() {
 
   if (!response.ok) {
     throw new Error(
-      `Impossible de charger l'index historique (${response.status})`
+      `Failed to load the historical index (${response.status})`
     );
   }
 
@@ -184,7 +184,7 @@ export async function loadHistoricalIndex() {
 
   if (!Array.isArray(data.years)) {
     throw new Error(
-      "index.json historique invalide : propriété 'years' absente"
+      "Invalid historical index.json: missing 'years' property"
     );
   }
 
@@ -253,7 +253,7 @@ export async function loadHistoricalGeoJSON(year) {
 
   if (!snapshot) {
     throw new Error(
-      `Aucun snapshot historique disponible pour ${year}`
+      `No historical snapshot available for ${year}`
     );
   }
 
@@ -273,7 +273,7 @@ export async function loadHistoricalGeoJSON(year) {
 
   if (!response.ok) {
     throw new Error(
-      `Impossible de charger ${snapshot.filename} (${response.status})`
+      `Failed to load ${snapshot.filename} (${response.status})`
     );
   }
 

@@ -45,14 +45,14 @@ export function allValuesOf(entity, mode) {
 
 export function createTheme(REGIONS, EVENTS) {
   if (!REGIONS || !EVENTS) {
-    throw new Error("REGIONS et EVENTS doivent être définis pour créer le thème.");
+    throw new Error("REGIONS and EVENTS must be defined to create the theme.");
   }
 
   const MODES = [
-    { key: "territory", label: "Entités politiques" },
+    { key: "territory", label: "Political entities" },
     { key: "religion", label: "Religions" },
-    { key: "language", label: "Langues" },
-    { key: "ethnicity", label: "Peuples / ethnies" }
+    { key: "language", label: "Languages" },
+    { key: "ethnicity", label: "Peoples / ethnicities" }
   ];
 
   let current = "territory";

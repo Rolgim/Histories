@@ -8,22 +8,14 @@ export function createThemeSwitcher({ Theme, MapRenderer, Panel }) {
   function renderLegend() {
     const year = MapRenderer.year;
 
-    // Entités politiques : la légende vient du GeoJSON historique
+    // Political entities: too many distinct colors to be useful as a
+    // legend — skip it entirely for this mode.
     if (Theme.current === "territory") {
-      const active = MapRenderer.getHistoricalLegend(); // tableau de {value, color}
-
       legendRow.innerHTML = "";
-      active.forEach(({ value, color }) => {
-        const s = document.createElement("div");
-        s.className = "swatch";
-        s.innerHTML = `<i style="background:${color}"></i>${escapeHtml(value)}`;
-        legendRow.appendChild(s);
-      });
-
       return;
     }
 
-    // Religion / langue / ethnie : top N + "Autres" (voir theme.js)
+    // Religion / language / ethnicity: top N + "Other" (see theme.js)
     const entries = Theme.legendEntries(Theme.current, year);
 
     legendRow.innerHTML = "";
@@ -31,7 +23,7 @@ export function createThemeSwitcher({ Theme, MapRenderer, Panel }) {
       const s = document.createElement("div");
       s.className = "swatch" + (isOther ? " swatch-other" : "");
       s.title = isOther
-        ? "Valeurs moins fréquentes regroupées"
+        ? "Less frequent values grouped together"
         : "";
       s.innerHTML = `<i style="background:${color}"></i>${escapeHtml(value)}`;
       legendRow.appendChild(s);

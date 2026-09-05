@@ -10,7 +10,7 @@ import {
   escapeHtml
 } from "./utils.js";
 
-import { createTheme, dominantValue } from "./theme.js";
+import { createTheme, allValuesOf } from "./theme.js";
 import { createPanel } from "./panel.js";
 import { createTimeline } from "./timeline.js";
 import { createThemeSwitcher } from "./theme-switcher.js";
@@ -45,7 +45,7 @@ map.scrollWheelZoom.disable();
 L.tileLayer(
   "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
   {
-    attribution: "Fond de carte © OpenStreetMap",
+    attribution: "Map data © OpenStreetMap",
     opacity: 0.4,
     noWrap: true,
     bounds: worldBounds
@@ -90,12 +90,12 @@ async function main() {
 
 
   console.log(
-    "Entités historiques enrichies :",
+    "Enriched historical entities:",
     historicalNames.length
   );
 
   console.log(
-    "Snapshots historiques disponibles :",
+    "Available historical snapshots:",
     historicalIndex.length
   );
 
@@ -426,7 +426,7 @@ async function initGeoJSONLayers(
           !Number.isFinite(lon)
         ) {
           console.warn(
-            "Événement ignoré : coordonnées invalides",
+            "Event skipped: invalid coordinates",
             event
           );
 
@@ -673,14 +673,14 @@ async function updateHistoricalBorders(
 
 
     console.log(
-      `Carte historique : ${historical.year} → ${historical.filename}`
+      `Historical map: ${historical.year} → ${historical.filename}`
     );
 
   }
   catch (error) {
 
     console.error(
-      `Erreur de chargement de la carte historique pour ${year}`,
+      `Error loading historical map for ${year}`,
       error
     );
 
@@ -691,6 +691,92 @@ async function updateHistoricalBorders(
 // ============================================================
 // STYLE DES FRONTIÈRES
 // ============================================================
+
+// ============================================================
+// HACHURES SVG POUR ENTITÉS À VALEURS MULTIPLES
+// ============================================================
+//
+// Quand une entité a plusieurs religions/langues/ethnies à la fois, on
+// la remplit avec un motif de rayures diagonales combinant les deux
+// valeurs les plus notables, plutôt qu'une seule couleur qui gommerait
+// l'info. Les patterns sont injectés dans le <svg> interne de Leaflet.
+// ============================================================
+
+const stripePatternIds = new Set();
+
+function getMapSvgDefs() {
+
+  const svg =
+    map.getPane("overlayPane")?.querySelector("svg");
+
+  if (!svg) {
+    return null;
+  }
+
+  let defs = svg.querySelector("defs");
+
+  if (!defs) {
+    defs = document.createElementNS(
+      "http://www.w3.org/2000/svg",
+      "defs"
+    );
+    svg.insertBefore(defs, svg.firstChild);
+  }
+
+  return defs;
+}
+
+function stripePatternId(colorA, colorB) {
+
+  const clean = (s) =>
+    String(s).replace(/[^a-zA-Z0-9]/g, "");
+
+  return `stripe-${clean(colorA)}-${clean(colorB)}`;
+}
+
+function ensureStripePattern(colorA, colorB) {
+
+  const id = stripePatternId(colorA, colorB);
+
+  if (stripePatternIds.has(id)) {
+    return id;
+  }
+
+  const defs = getMapSvgDefs();
+
+  if (!defs) {
+    return null;
+  }
+
+  const ns = "http://www.w3.org/2000/svg";
+
+  const pattern =
+    document.createElementNS(ns, "pattern");
+
+  pattern.setAttribute("id", id);
+  pattern.setAttribute("width", "8");
+  pattern.setAttribute("height", "8");
+  pattern.setAttribute("patternUnits", "userSpaceOnUse");
+  pattern.setAttribute("patternTransform", "rotate(45)");
+
+  const rectA = document.createElementNS(ns, "rect");
+  rectA.setAttribute("width", "8");
+  rectA.setAttribute("height", "8");
+  rectA.setAttribute("fill", colorA);
+  pattern.appendChild(rectA);
+
+  const rectB = document.createElementNS(ns, "rect");
+  rectB.setAttribute("width", "4");
+  rectB.setAttribute("height", "8");
+  rectB.setAttribute("fill", colorB);
+  pattern.appendChild(rectB);
+
+  defs.appendChild(pattern);
+  stripePatternIds.add(id);
+
+  return id;
+}
+
 
 function historicalBorderStyle(
   feature,
@@ -794,22 +880,37 @@ function historicalBorderStyle(
         )
       : null;
 
-  const dominant =
+  const values =
     entity
-      ? dominantValue(entity, Theme.current)
-      : null;
+      ? allValuesOf(entity, Theme.current)
+      : [];
 
-  const fillColor =
-    dominant
-      ? Theme.colorFor(Theme.current, dominant)
-      : "transparent";
+  let fillColor = "transparent";
+  let fillOpacity = 0;
+
+  if (values.length > 1) {
+
+    // Entité à valeurs multiples : hachures combinant les deux
+    // valeurs les plus notables plutôt qu'une seule couleur qui
+    // effacerait l'info.
+    const colorA = Theme.colorFor(Theme.current, values[0]);
+    const colorB = Theme.colorFor(Theme.current, values[1]);
+    const patternId = ensureStripePattern(colorA, colorB);
+
+    fillColor = patternId ? `url(#${patternId})` : colorA;
+    fillOpacity = 0.45;
+
+  } else if (values.length === 1) {
+
+    fillColor = Theme.colorFor(Theme.current, values[0]);
+    fillOpacity = 0.32;
+  }
 
   return {
 
     fillColor,
 
-    fillOpacity:
-      dominant ? 0.32 : 0,
+    fillOpacity,
 
     color:
       "#6b5a45",
@@ -1239,7 +1340,7 @@ main().catch(
     if (hint) {
 
       hint.textContent =
-        "Erreur de chargement des données. Utilisez un serveur local.";
+        "Error loading data. Please use a local server.";
 
     }
 
